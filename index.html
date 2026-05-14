@@ -122,6 +122,7 @@ const EMPTY_LINE = () => ({
   dtfFront: "",
   dtfBack: "",
   pressedInHouse: false,
+  embroideryCostPerUnit: "",
   costPerUnit: "",
 });
 
@@ -139,6 +140,7 @@ function calcLine(line) {
   const blank    = parseFloat(line.blankCostPerUnit) || 0;
   const lineFee  = parseFloat(line.lineFeeAmount) || 0;
   const pressing = line.pressedInHouse ? 1 : 0;
+  const embroidery = parseFloat(line.embroideryCostPerUnit) || 0;
   const dtfCost  = (DTF_COST[line.dtfFront] || 0) + (DTF_COST[line.dtfBack] || 0);
   const stdSubtotal = std * qty;
   let bulkPrice = null;
@@ -147,9 +149,9 @@ function calcLine(line) {
     if (bulkPrice < 0) bulkPrice = 0;
   }
   const bulkSubtotal = bulkPrice !== null ? bulkPrice * qty : null;
-  const totalCost = (cpu + blank + pressing + dtfCost) * qty + lineFee;
-  const suggestedPrice = (blank + dtfCost) > 0 ? (blank + dtfCost + (line.pressedInHouse ? 1 : 0) + SERVICE_FEE) * MARKUP : null;
-  return { qty, std, discRaw, discMode, stdSubtotal, bulkPrice, bulkSubtotal, lineFee, totalCost, pressing, dtfCost, suggestedPrice };
+  const totalCost = (cpu + blank + pressing + dtfCost + embroidery) * qty + lineFee;
+  const suggestedPrice = (blank + dtfCost + embroidery) > 0 ? (blank + dtfCost + embroidery + (line.pressedInHouse ? 1 : 0) + SERVICE_FEE) * MARKUP : null;
+  return { qty, std, discRaw, discMode, stdSubtotal, bulkPrice, bulkSubtotal, lineFee, totalCost, pressing, dtfCost, embroidery, suggestedPrice };
 }
 
 function Label({ children, small }) {
@@ -380,6 +382,18 @@ function LineEditor({ line, index, onChange, onRemove, showRemove }) {
           </div>
         )}
         <div style={{ marginBottom: 8 }}>
+          <Label small>Embroidery Cost / Unit (outsourced)</Label>
+          <div style={{ position: "relative" }}>
+            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6b7a99", fontWeight: 700 }}>$</span>
+            <Input value={line.embroideryCostPerUnit} onChange={v => set("embroideryCostPerUnit", v)} type="number" min="0" step="0.01" placeholder="0.00" style={{ paddingLeft: 22 }} />
+          </div>
+          {parseFloat(line.embroideryCostPerUnit) > 0 && (
+            <div style={{ fontSize: 10, color: "#8899bb", marginTop: 3, fontFamily: "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif" }}>
+              Remember to add setup fee in Line Fee above
+            </div>
+          )}
+        </div>
+        <div style={{ marginBottom: 8 }}>
           <Label small>Other Cost / Unit</Label>
           <div style={{ position: "relative" }}>
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: "#6b7a99", fontWeight: 700 }}>$</span>
@@ -540,7 +554,8 @@ function QuoteForm({ onSave, editQuote, onCancel, logoBase64 }) {
             const blank = parseFloat(line.blankCostPerUnit) || 0;
             const dtfCost = (DTF_COST[line.dtfFront] || 0) + (DTF_COST[line.dtfBack] || 0);
             const pressing = line.pressedInHouse ? 1 : 0;
-            const cpu = blank + dtfCost + pressing;
+            const embroidery = parseFloat(line.embroideryCostPerUnit) || 0;
+            const cpu = blank + dtfCost + pressing + embroidery;
             const TIERS = [
               { qty: "1 – 11",  pct: null },
               { qty: "12 – 35", pct: 15 },
@@ -583,7 +598,7 @@ function QuoteForm({ onSave, editQuote, onCancel, logoBase64 }) {
                 </div>
                 {cpu > 0 && (
                   <div style={{ fontSize: 10, color: "#8899bb", marginTop: 6, fontFamily: "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif" }}>
-                    Cost/unit: {fmt(cpu)} (blank ${blank} + DTF ${dtfCost.toFixed(2)} + pressing ${pressing}) · $5 service fee is your profit
+                    Cost/unit: {fmt(cpu)} (blank ${blank} + DTF ${dtfCost.toFixed(2)} + embroidery ${(parseFloat(line.embroideryCostPerUnit)||0).toFixed(2)} + pressing ${pressing}) · $5 service fee is your profit
                   </div>
                 )}
               </div>
