@@ -609,13 +609,17 @@ function QuoteForm({ onSave, editQuote, onCancel, logoBase64 }) {
 
       <div style={{ background: `linear-gradient(135deg, ${NAVY}, #223366)`, borderRadius: 16, padding: 20, marginBottom: 16, color: "white" }}>
         <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: 2, opacity: 0.6, marginBottom: 14, textTransform: "uppercase", fontFamily: "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif" }}>Quote Summary</div>
-        <Row label="Standard Order Total" value={fmt(stdGrand)} />
-        {hasBulk && <>
-          <Row label="Bulk Order Total" value={fmt(bulkGrand)} accent />
-          <Row label="Client Saves" value={fmt(saved)} green />
-        </>}
+        <Row label="Product Subtotal" value={fmt(hasBulk ? bulkProductSubtotal : stdProductSubtotal)} small />
         {feeBreakdown.map(f => <Row key={f.key} label={`${f.label}${f.mode === "percent" ? ` (${f.inputVal}%)` : ""}`} value={fmt(f.amount)} small />)}
-        {taxEnabled && <Row label={`CA Tax (${taxRate}%)`} value={fmt(hasBulk ? bulkTax : stdTax)} small />}
+        {ship > 0 && <Row label="Shipping" value={fmt(ship)} small />}
+        {taxEnabled && <Row label={`CA Sales Tax (${taxRate}%)`} value={fmt(hasBulk ? bulkTax : stdTax)} small />}
+        <div style={{ borderTop: "1px solid rgba(255,255,255,0.3)", marginTop: 10, paddingTop: 10 }}>
+          <Row label="Standard Order Total" value={fmt(stdGrand)} />
+          {hasBulk && <>
+            <Row label="Bulk Order Total" value={fmt(bulkGrand)} accent />
+            <Row label="Client Saves" value={fmt(saved)} green />
+          </>}
+        </div>
         <div style={{ borderTop: "1px solid rgba(255,255,255,0.15)", marginTop: 12, paddingTop: 12 }}>
           <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1.5, opacity: 0.5, textTransform: "uppercase", marginBottom: 8, fontFamily: "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif" }}>🔒 Private</div>
           <Row label="Your Total Cost" value={fmt(totalCost)} small />
@@ -904,29 +908,33 @@ function QuotePreview({ quote, logoBase64, onClose }) {
             </div>
           );
         })}
-        {parseFloat(quote.shipping) > 0 && (
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0", color: "#6b7a99" }}>
-            <span>Shipping</span><span>{fmt(quote.shipping)}</span>
-          </div>
-        )}
-        {t.feeBreakdown?.map(f => (
-          <div key={f.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0", color: "#6b7a99" }}>
-            <span>{f.label}{f.mode === "percent" ? " (" + f.inputVal + "%)" : ""}</span>
-            <span style={{ fontWeight: 700, color: NAVY }}>{fmt(f.amount)}</span>
-          </div>
-        ))}
         <div style={{ marginTop: 20, paddingTop: 16, borderTop: "2px solid #eef0f5" }}>
-          <TotalRow label="Standard Order Total:" value={fmt(t.stdGrand)} />
-          {t.hasBulk && <>
-            <TotalRow label="Bulk Order Total:" value={fmt(t.bulkGrand)} bold teal />
-            <TotalRow label="You Saved:" value={fmt(t.saved)} teal />
-          </>}
+          <TotalRow label="Product Subtotal:" value={fmt(t.hasBulk ? t.bulkBase - t.ship - t.totalFees : t.stdTotal - t.ship - t.totalFees)} />
+          {t.feeBreakdown?.map(f => (
+            <div key={f.key} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0", color: "#6b7a99" }}>
+              <span>{f.label}{f.mode === "percent" ? " (" + f.inputVal + "%)" : ""}</span>
+              <span style={{ fontWeight: 700, color: NAVY }}>{fmt(f.amount)}</span>
+            </div>
+          ))}
+          {t.ship > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0", color: "#6b7a99" }}>
+              <span>Shipping</span>
+              <span style={{ fontWeight: 700, color: NAVY }}>{fmt(t.ship)}</span>
+            </div>
+          )}
           {quote.taxEnabled && (
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#6b7a99", padding: "3px 0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "3px 0", color: "#6b7a99" }}>
               <span>CA Sales Tax ({quote.taxRate}% on product subtotal)</span>
               <span style={{ fontWeight: 700, color: NAVY }}>{fmt(t.hasBulk ? t.bulkTax : t.stdTax)}</span>
             </div>
           )}
+          <div style={{ borderTop: "1.5px solid #dde3ee", marginTop: 8, paddingTop: 8 }}>
+            <TotalRow label="Standard Order Total:" value={fmt(t.stdGrand)} />
+            {t.hasBulk && <>
+              <TotalRow label="Bulk Order Total:" value={fmt(t.bulkGrand)} bold teal />
+              <TotalRow label="You Saved:" value={fmt(t.saved)} teal />
+            </>}
+          </div>
         </div>
         <div style={{ marginTop: 20, fontSize: 13, fontWeight: 700, color: TEAL, textAlign: "center" }}>Order more to maximize savings on future bulk tiers!</div>
         <div style={{ marginTop: 24, padding: "16px 20px", background: "#f7f9fd", borderRadius: 8 }}>
