@@ -989,7 +989,7 @@ async function generatePDF(quote, logoBase64) {
     doc.setFontSize(9);
     doc.setTextColor(...gray);
     doc.text("A 50% deposit is required upon approval of this quote.", ML + 12, y + 28);
-    doc.text("Remaining balance due Net 30 from date of delivery.", ML + 12, y + 40);
+    doc.text("Remaining balance due upon delivery.", ML + 12, y + 40);
   } else {
     doc.roundedRect(ML, y, PW - ML - MR, 56, 4, 4, "FD");
     doc.setFont("helvetica", "bold");
@@ -1125,7 +1125,7 @@ function QuotePreview({ quote, logoBase64, onClose }) {
           {quote.corporateMode ? <>
             <div style={{ fontSize: 12, fontWeight: 700, color: NAVY, marginBottom: 8 }}>Payment Terms:</div>
             <div style={{ fontSize: 12, color: "#6b7a99", lineHeight: 2 }}>A 50% deposit is required upon approval of this quote.</div>
-            <div style={{ fontSize: 12, color: "#6b7a99" }}>Remaining balance due Net 30 from date of delivery.</div>
+            <div style={{ fontSize: 12, color: "#6b7a99" }}>Remaining balance due upon delivery.</div>
           </> : <>
             <div style={{ fontSize: 12, fontWeight: 700, color: NAVY, marginBottom: 8 }}>Payment Options:</div>
             <div style={{ fontSize: 12, color: "#6b7a99", lineHeight: 2 }}>Zelle: teammerchla@gmail.com &nbsp;&nbsp;|&nbsp;&nbsp; CashApp: $merchlosangeles &nbsp;&nbsp;|&nbsp;&nbsp; Venmo: @merchlosangeles.com</div>
