@@ -472,7 +472,7 @@ function QuoteForm({ onSave, editQuote, onCancel, logoBase64 }) {
   const bulkGrand  = bulkBase + bulkTax + ship + totalFees;
   const saved      = stdGrand - bulkGrand;
   const totalCost  = lineCalcs.reduce((s, c) => s + c.totalCost, 0) + ship;
-  const profit     = (hasBulk ? bulkGrand : stdGrand) - totalCost;
+  const profit     = (hasBulk ? bulkGrand - bulkTax : stdGrand - stdTax) - totalCost;
 
   function handleSave() {
     if (!organization && !requestedBy) return;
