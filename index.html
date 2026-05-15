@@ -807,9 +807,22 @@ async function generatePDF(quote, logoBase64) {
   if (logoBase64) {
     try {
       const imgW = 180, imgH = 62;
-      doc.addImage(logoBase64, "PNG", (PW - imgW) / 2, y, imgW, imgH);
+      const imgType = logoBase64.startsWith("data:image/png") ? "PNG" :
+                      logoBase64.startsWith("data:image/jpg") || logoBase64.startsWith("data:image/jpeg") ? "JPEG" : "PNG";
+      doc.addImage(logoBase64, imgType, (PW - imgW) / 2, y, imgW, imgH);
       y += imgH + 24;
-    } catch { y += 20; }
+    } catch(e) {
+      try {
+        doc.addImage(logoBase64, "JPEG", (PW - 180) / 2, y, 180, 62);
+        y += 86;
+      } catch {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(16);
+        doc.setTextColor(...navy);
+        doc.text("MERCH LOS ANGELES", PW / 2, y + 20, { align: "center" });
+        y += 44;
+      }
+    }
   } else {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(16);
@@ -836,7 +849,11 @@ async function generatePDF(quote, logoBase64) {
   if (quote.organization) doc.text("Organization: " + quote.organization, metaX, y + 16, { align: "right" });
   y += 32;
 
-  const cols = { desc: ML, qty: 270, std: 330, disc: 388, ppc: 445, total: 492 };
+  const isCorp = quote.corporateMode;
+  const cols = isCorp
+    ? { desc: ML, qty: 310, std: 390, total: 492 }
+    : { desc: ML, qty: 270, std: 330, disc: 388, ppc: 445, total: 492 };
+
   doc.setFillColor(...teal);
   doc.rect(ML, y, PW - ML - MR, 18, "F");
   doc.setFont("helvetica", "bold");
@@ -844,9 +861,11 @@ async function generatePDF(quote, logoBase64) {
   doc.setTextColor(255, 255, 255);
   doc.text("PRODUCT DESCRIPTION", cols.desc + 4, y + 12);
   doc.text("QTY", cols.qty, y + 12, { align: "center" });
-  doc.text("STD PRICE", cols.std, y + 12, { align: "center" });
-  doc.text("BULK DISC.", cols.disc, y + 12, { align: "center" });
-  doc.text("PRICE/PC", cols.ppc, y + 12, { align: "center" });
+  doc.text(isCorp ? "PRICE" : "STD PRICE", cols.std, y + 12, { align: "center" });
+  if (!isCorp) {
+    doc.text("BULK DISC.", cols.disc, y + 12, { align: "center" });
+    doc.text("PRICE/PC", cols.ppc, y + 12, { align: "center" });
+  }
   doc.text("TOTAL", PW - MR - 4, y + 12, { align: "right" });
   y += 26;
 
@@ -861,25 +880,29 @@ async function generatePDF(quote, logoBase64) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
     doc.setTextColor(...navy);
-    const descLines = doc.splitTextToSize(line.description, 230);
+    const descWidth = isCorp ? 270 : 230;
+    const descLines = doc.splitTextToSize(line.description, descWidth);
     doc.text(descLines, cols.desc + 4, y + 8);
     const rowH = Math.max(26, descLines.length * 13 + 10);
     doc.text(String(line.qty), cols.qty, y + 8, { align: "center" });
     doc.text(fmt(c.std), cols.std, y + 8, { align: "center" });
-    if (hasBulk) {
-      doc.setTextColor(...teal);
-      doc.setFont("helvetica", "bold");
-      const discLabel = (line.bulkDiscountMode || "percent") === "flat" ? "-" + fmt(c.discRaw) : line.bulkDiscount + "% off";
-      doc.text(discLabel, cols.disc, y + 8, { align: "center" });
-      doc.text(fmt(c.bulkPrice), cols.ppc, y + 8, { align: "center" });
-      doc.setTextColor(...navy);
-    } else {
-      doc.setTextColor(180, 180, 180);
-      doc.text("—", cols.disc, y + 8, { align: "center" });
-      doc.text("—", cols.ppc, y + 8, { align: "center" });
-      doc.setTextColor(...navy);
+    if (!isCorp) {
+      if (hasBulk) {
+        doc.setTextColor(...teal);
+        doc.setFont("helvetica", "bold");
+        const discLabel = (line.bulkDiscountMode || "percent") === "flat" ? "-" + fmt(c.discRaw) : line.bulkDiscount + "% off";
+        doc.text(discLabel, cols.disc, y + 8, { align: "center" });
+        doc.text(fmt(c.bulkPrice), cols.ppc, y + 8, { align: "center" });
+        doc.setTextColor(...navy);
+      } else {
+        doc.setTextColor(180, 180, 180);
+        doc.text("—", cols.disc, y + 8, { align: "center" });
+        doc.text("—", cols.ppc, y + 8, { align: "center" });
+        doc.setTextColor(...navy);
+      }
     }
     doc.setFont("helvetica", "bold");
+    doc.setTextColor(...navy);
     doc.text(fmt(hasBulk ? c.bulkSubtotal : c.stdSubtotal), PW - MR - 4, y + 8, { align: "right" });
     y += rowH;
     if (line.lineFeeLabel && parseFloat(line.lineFeeAmount) > 0) {
@@ -926,11 +949,11 @@ async function generatePDF(quote, logoBase64) {
   doc.setFont("helvetica", "normal");
   doc.setFontSize(11);
   doc.setTextColor(...navy);
-  doc.text("Standard Order Total:", ML + 4, y);
+  doc.text(isCorp ? "Order Total:" : "Standard Order Total:", ML + 4, y);
   doc.setFont("helvetica", "bold");
   doc.text(fmt(t.stdGrand), PW - MR - 4, y, { align: "right" });
   y += 18;
-  if (t.hasBulk) {
+  if (!isCorp && t.hasBulk) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(...teal);
@@ -945,24 +968,40 @@ async function generatePDF(quote, logoBase64) {
     y += 20;
   }
   y += 8;
-  doc.setFont("helvetica", "bolditalic");
-  doc.setFontSize(10);
-  doc.setTextColor(...teal);
-  doc.text("Order more to maximize savings on future bulk tiers!", PW / 2, y, { align: "center" });
-  y += 24;
+  if (!isCorp) {
+    doc.setFont("helvetica", "bolditalic");
+    doc.setFontSize(10);
+    doc.setTextColor(...teal);
+    doc.text("Order more to maximize savings on future bulk tiers!", PW / 2, y, { align: "center" });
+    y += 24;
+  }
 
+  // Payment box
   doc.setFillColor(247, 249, 253);
   doc.setDrawColor(...ltgray);
-  doc.roundedRect(ML, y, PW - ML - MR, 56, 4, 4, "FD");
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(...navy);
-  doc.text("Payment Options:", ML + 12, y + 14);
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(...gray);
-  doc.text("Zelle: teammerchla@gmail.com", ML + 12, y + 28);
-  doc.text("CashApp: $merchlosangeles    |    Venmo: @merchlosangeles.com", ML + 12, y + 40);
+  if (isCorp) {
+    doc.roundedRect(ML, y, PW - ML - MR, 56, 4, 4, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...navy);
+    doc.text("Payment Terms:", ML + 12, y + 14);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...gray);
+    doc.text("A 50% deposit is required upon approval of this quote.", ML + 12, y + 28);
+    doc.text("Remaining balance due Net 30 from date of delivery.", ML + 12, y + 40);
+  } else {
+    doc.roundedRect(ML, y, PW - ML - MR, 56, 4, 4, "FD");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(...navy);
+    doc.text("Payment Options:", ML + 12, y + 14);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(...gray);
+    doc.text("Zelle: teammerchla@gmail.com", ML + 12, y + 28);
+    doc.text("CashApp: $merchlosangeles    |    Venmo: @merchlosangeles.com", ML + 12, y + 40);
+  }
   y += 68;
 
   doc.setFont("helvetica", "italic");
@@ -1024,8 +1063,8 @@ function QuotePreview({ quote, logoBase64, onClose }) {
             {quote.organization && <div><strong>Organization:</strong> {quote.organization}</div>}
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "3fr 60px 80px 80px 80px 80px", gap: 8, borderBottom: "2px solid " + TEAL, paddingBottom: 8, marginBottom: 12 }}>
-          {["Product Description","QTY","Std Price","Bulk Disc.","Price/pc","Total"].map((h, i) => (
+        <div style={{ display: "grid", gridTemplateColumns: quote.corporateMode ? "3fr 60px 100px 80px" : "3fr 60px 80px 80px 80px 80px", gap: 8, borderBottom: "2px solid " + TEAL, paddingBottom: 8, marginBottom: 12 }}>
+          {(quote.corporateMode ? ["Product Description","QTY","Price","Total"] : ["Product Description","QTY","Std Price","Bulk Disc.","Price/pc","Total"]).map((h, i) => (
             <div key={h} style={{ fontSize: 11, fontWeight: 800, color: TEAL, textTransform: "uppercase", letterSpacing: 0.8, textAlign: i > 0 ? "center" : "left" }}>{h}</div>
           ))}
         </div>
@@ -1034,12 +1073,14 @@ function QuotePreview({ quote, logoBase64, onClose }) {
           const hasBulk = c.bulkPrice !== null;
           return (
             <div key={line.id} style={{ borderBottom: "1px solid #eef0f5", paddingBottom: 12, marginBottom: 12 }}>
-              <div style={{ display: "grid", gridTemplateColumns: "3fr 60px 80px 80px 80px 80px", gap: 8, alignItems: "start" }}>
+              <div style={{ display: "grid", gridTemplateColumns: quote.corporateMode ? "3fr 60px 100px 80px" : "3fr 60px 80px 80px 80px 80px", gap: 8, alignItems: "start" }}>
                 <div style={{ fontSize: 13, color: NAVY, lineHeight: 1.6 }}>{line.description}</div>
                 <div style={{ fontSize: 13, textAlign: "center", color: NAVY }}>{line.qty}</div>
                 <div style={{ fontSize: 13, textAlign: "center", color: NAVY }}>{fmt(c.std)}</div>
-                <div style={{ fontSize: 13, textAlign: "center", color: hasBulk ? TEAL_DARK : "#ccc", fontWeight: hasBulk ? 700 : 400 }}>{hasBulk ? line.bulkDiscount + "%" : "—"}</div>
-                <div style={{ fontSize: 13, textAlign: "center", color: hasBulk ? TEAL_DARK : "#ccc", fontWeight: hasBulk ? 700 : 400 }}>{hasBulk ? fmt(c.bulkPrice) : "—"}</div>
+                {!quote.corporateMode && <>
+                  <div style={{ fontSize: 13, textAlign: "center", color: hasBulk ? TEAL_DARK : "#ccc", fontWeight: hasBulk ? 700 : 400 }}>{hasBulk ? line.bulkDiscount + "%" : "—"}</div>
+                  <div style={{ fontSize: 13, textAlign: "center", color: hasBulk ? TEAL_DARK : "#ccc", fontWeight: hasBulk ? 700 : 400 }}>{hasBulk ? fmt(c.bulkPrice) : "—"}</div>
+                </>}
                 <div style={{ fontSize: 13, textAlign: "center", color: NAVY, fontWeight: 700 }}>{fmt(hasBulk ? c.bulkSubtotal : c.stdSubtotal)}</div>
               </div>
               {line.lineFeeLabel && parseFloat(line.lineFeeAmount) > 0 && (
@@ -1072,17 +1113,23 @@ function QuotePreview({ quote, logoBase64, onClose }) {
             </div>
           )}
           <div style={{ borderTop: "1.5px solid #dde3ee", marginTop: 8, paddingTop: 8 }}>
-            <TotalRow label="Standard Order Total:" value={fmt(t.stdGrand)} />
-            {t.hasBulk && <>
+            <TotalRow label={quote.corporateMode ? "Order Total:" : "Standard Order Total:"} value={fmt(t.stdGrand)} />
+            {!quote.corporateMode && t.hasBulk && <>
               <TotalRow label="Bulk Order Total:" value={fmt(t.bulkGrand)} bold teal />
               <TotalRow label="You Saved:" value={fmt(t.saved)} teal />
             </>}
           </div>
         </div>
-        <div style={{ marginTop: 20, fontSize: 13, fontWeight: 700, color: TEAL, textAlign: "center" }}>Order more to maximize savings on future bulk tiers!</div>
+        {!quote.corporateMode && <div style={{ marginTop: 20, fontSize: 13, fontWeight: 700, color: TEAL, textAlign: "center" }}>Order more to maximize savings on future bulk tiers!</div>}
         <div style={{ marginTop: 24, padding: "16px 20px", background: "#f7f9fd", borderRadius: 8 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: NAVY, marginBottom: 8 }}>Payment Options:</div>
-          <div style={{ fontSize: 12, color: "#6b7a99", lineHeight: 2 }}>Zelle: teammerchla@gmail.com &nbsp;&nbsp;|&nbsp;&nbsp; CashApp: $merchlosangeles &nbsp;&nbsp;|&nbsp;&nbsp; Venmo: @merchlosangeles.com</div>
+          {quote.corporateMode ? <>
+            <div style={{ fontSize: 12, fontWeight: 700, color: NAVY, marginBottom: 8 }}>Payment Terms:</div>
+            <div style={{ fontSize: 12, color: "#6b7a99", lineHeight: 2 }}>A 50% deposit is required upon approval of this quote.</div>
+            <div style={{ fontSize: 12, color: "#6b7a99" }}>Remaining balance due Net 30 from date of delivery.</div>
+          </> : <>
+            <div style={{ fontSize: 12, fontWeight: 700, color: NAVY, marginBottom: 8 }}>Payment Options:</div>
+            <div style={{ fontSize: 12, color: "#6b7a99", lineHeight: 2 }}>Zelle: teammerchla@gmail.com &nbsp;&nbsp;|&nbsp;&nbsp; CashApp: $merchlosangeles &nbsp;&nbsp;|&nbsp;&nbsp; Venmo: @merchlosangeles.com</div>
+          </>}
         </div>
         <div style={{ marginTop: 16, fontSize: 11, color: "#8899bb", textAlign: "right" }}>Prepared by: Elizabeth@merchlosangeles.com</div>
       </div>
