@@ -622,7 +622,7 @@ function QuoteForm({ onSave, editQuote, onCancel, logoBase64 }) {
         )}
       </div>
 
-      {lines.some(l => l.standardPrice && parseFloat(l.standardPrice) > 0) && (
+      {!corporateMode && lines.some(l => l.standardPrice && parseFloat(l.standardPrice) > 0) && (
         <div style={{ background: "white", borderRadius: 14, border: "1.5px solid #dde3ee", padding: 16, marginBottom: 16 }}>
           <div style={{ fontSize: 12, fontWeight: 800, color: NAVY, letterSpacing: 1, textTransform: "uppercase", marginBottom: 12, fontFamily: "Inter,'Helvetica Neue',Helvetica,Arial,sans-serif" }}>📊 Bulk Tier Reference</div>
           {lines.filter(l => l.standardPrice && parseFloat(l.standardPrice) > 0).map((line, idx) => {
