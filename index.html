@@ -881,7 +881,7 @@ async function generatePDF(quote, logoBase64) {
     doc.setFontSize(10);
     doc.setTextColor(...navy);
     const descWidth = isCorp ? 270 : 230;
-    const descLines = doc.splitTextToSize(line.description, descWidth);
+    const descLines = line.description.split("\n").flatMap(l => doc.splitTextToSize(l || " ", descWidth));
     doc.text(descLines, cols.desc + 4, y + 8);
     const rowH = Math.max(26, descLines.length * 13 + 10);
     doc.text(String(line.qty), cols.qty, y + 8, { align: "center" });
@@ -1074,7 +1074,7 @@ function QuotePreview({ quote, logoBase64, onClose }) {
           return (
             <div key={line.id} style={{ borderBottom: "1px solid #eef0f5", paddingBottom: 12, marginBottom: 12 }}>
               <div style={{ display: "grid", gridTemplateColumns: quote.corporateMode ? "3fr 60px 100px 80px" : "3fr 60px 80px 80px 80px 80px", gap: 8, alignItems: "start" }}>
-                <div style={{ fontSize: 13, color: NAVY, lineHeight: 1.6 }}>{line.description}</div>
+                <div style={{ fontSize: 13, color: NAVY, lineHeight: 1.6 }}>{line.description.split("\n").map((l, i) => <div key={i}>{l || "\u00A0"}</div>)}</div>
                 <div style={{ fontSize: 13, textAlign: "center", color: NAVY }}>{line.qty}</div>
                 <div style={{ fontSize: 13, textAlign: "center", color: NAVY }}>{fmt(c.std)}</div>
                 {!quote.corporateMode && <>
